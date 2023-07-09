@@ -22,5 +22,5 @@ include(${COMMON_MAIN_CMAKE} PUBLIC)
 # Include source code
 ################################################################################
 
-#add_subdirectory(@subdirectory_relative_path@)
+add_subdirectory(libs/mfcnt)
 
