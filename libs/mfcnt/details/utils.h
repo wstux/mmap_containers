@@ -25,32 +25,25 @@
 #ifndef _MMAP_CONTAINERS_MFCNT_UTILS_H
 #define _MMAP_CONTAINERS_MFCNT_UTILS_H
 
+extern "C" {
+    #include <fcntl.h>
+    #include <string.h>
+    #include <sys/mman.h>
+    #include <sys/stat.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+}
+
+#include <cassert>
+#include <cstddef>
+#include <stdexcept>
+#include <string>
+
 #include "mfcnt/types.h"
 
 namespace mfcnt {
 namespace details {
 namespace utils {
-
-std::string str_error_r(int error_code)
-{
-    const static size_t buff_size = 1024;
-    char err_buffer[buff_size];
-    char *str_err = nullptr;
-
-#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
-    if (::strerror_r(error_code, err_buffer, buff_size) == 0) {
-        str_err = err_buffer;
-    }
-#else
-    str_err = ::strerror_r(error_code, err_buffer, buff_size);
-#endif
-
-    if (! str_err) {
-        return std::string("Invalid errno code '" + std::to_string(error_code) + "'");
-    }
-
-    return std::string(str_err) + " (" + std::to_string(error_code) + ")";
-}
 
 struct mmap_options
 {
@@ -85,6 +78,26 @@ struct mmap_buffer
         , cur_buf_num(0)
     {}
 
+    /// @brief  Mapping file to buffer.
+    /// @param  buf_num - the number of the "segment" of the file to be mapping in memory.
+    /// @return Pointer to mapping in memory.
+    pointer mmap(const size_t buf_num) const
+    {
+        assert(opts.fd != -1);
+
+        if (buf_num == cur_buf_num && p_cur_buf) {
+            return p_cur_buf;
+        }
+
+        p_cur_buf = (pointer)::mmap64(p_cur_buf, TBufSize, opts.prot, opts.flags,
+                                      opts.fd, opts.offset + buf_num * TBufSize);
+        if (p_addr == MAP_FAILED) {
+            throw std::runtime_error("mmap: error map file to memory: " + str_error_r(errno));
+        }
+        cur_buf_num = buf_num;
+        return p_cur_buf;
+    }
+
     /// @brief  Open the file.
     /// @param  path  - path to file.
     /// @param  m - open file mode.
@@ -112,13 +125,44 @@ struct mmap_buffer
         }
     }
 
+    void munmap() const
+    {
+        if (p_cur_buf != nullptr) {
+            ::munmap(p_cur_buf, TBufSize);
+        }
+
+        p_cur_buf = nullptr;
+        cur_buf_num = 0;
+    }
+
+    static std::string str_error_r(int error_code)
+    {
+        const static size_t buff_size = 1024;
+        char err_buffer[buff_size];
+        char *str_err = nullptr;
+
+    #if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
+        if (::strerror_r(error_code, err_buffer, buff_size) == 0) {
+            str_err = err_buffer;
+        }
+    #else
+        str_err = ::strerror_r(error_code, err_buffer, buff_size);
+    #endif
+
+        if (! str_err) {
+            return std::string("Invalid errno code '" + std::to_string(error_code) + "'");
+        }
+
+        return std::string(str_err) + " (" + std::to_string(error_code) + ")";
+    }
+
     mmap_options opts;
 
     std::string file_path;
     int open_flags;
 
-    pointer p_cur_buf;
-    size_t cur_buf_num;
+    mutable pointer p_cur_buf;
+    mutable size_t cur_buf_num;
 };
 
 } // namespace utils
