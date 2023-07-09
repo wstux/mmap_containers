@@ -74,14 +74,22 @@ struct mmap_buffer
 
     BufMapper()
         : open_flags(-1)
-        , p_cur_buf(NULL)
+        , p_cur_buf(nullptr)
         , cur_buf_num(0)
     {}
+
+    BufMapper(const std::string& path, const mode m)
+        : open_flags(-1)
+        , p_cur_buf(nullptr)
+        , cur_buf_num(0)
+    {
+        open(path, m);
+    }
 
     /// @brief  Unmap buffer and close the file.
     void close()
     {
-        if (opts.fd == -1) {
+        if (! is_open()) {
             return;
         }
         unmap();
@@ -90,12 +98,14 @@ struct mmap_buffer
         
     }
 
+    bool is_open() const { return (opts.fd != -1); }
+
     /// @brief  Mapping file to buffer.
     /// @param  buf_num - the number of the "segment" of the file to be mapping in memory.
     /// @return Pointer to mapping in memory.
     pointer map(const size_t buf_num) const
     {
-        assert(opts.fd != -1);
+        assert(is_open());
 
         if (buf_num == cur_buf_num && p_cur_buf) {
             return p_cur_buf;
@@ -176,6 +186,13 @@ struct mmap_buffer
     mutable pointer p_cur_buf;
     mutable size_t cur_buf_num;
 };
+
+/// @brief  Memory page size calculation.
+/// @return Memory page size.
+long memory_page_size()
+{
+    return ::sysconf(_SC_PAGE_SIZE);
+}
 
 } // namespace utils
 } // namespace details
