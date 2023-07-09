@@ -25,9 +25,103 @@
 #ifndef _MMAP_CONTAINERS_MFCNT_UTILS_H
 #define _MMAP_CONTAINERS_MFCNT_UTILS_H
 
+#include "mfcnt/types.h"
+
 namespace mfcnt {
 namespace details {
+namespace utils {
 
+std::string str_error_r(int error_code)
+{
+    const static size_t buff_size = 1024;
+    char err_buffer[buff_size];
+    char *str_err = nullptr;
+
+#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
+    if (::strerror_r(error_code, err_buffer, buff_size) == 0) {
+        str_err = err_buffer;
+    }
+#else
+    str_err = ::strerror_r(error_code, err_buffer, buff_size);
+#endif
+
+    if (! str_err) {
+        return std::string("Invalid errno code '" + std::to_string(error_code) + "'");
+    }
+
+    return std::string(str_err) + " (" + std::to_string(error_code) + ")";
+}
+
+struct mmap_options
+{
+    mmap_options()
+        : fd(-1)
+    {}
+
+    /// File descriptor.
+    int fd;
+
+    /// The offset to start mapping the file to align with the size
+    /// of the memory page.
+    size_t offset;
+
+    /// Desired memory protection of the mapping.
+    int prot;
+
+    /// Determines whether updates to the mapping are visible to other
+    /// processes mapping the same region, and whether updates are carried
+    /// through to the underlying file.
+    int flags;
+};
+
+template<typename TPtr, size_t TBufSize>
+struct mmap_buffer
+{
+    typedef TPtr    pointer;
+
+    BufMapper()
+        : open_flags(-1)
+        , p_cur_buf(NULL)
+        , cur_buf_num(0)
+    {}
+
+    /// @brief  Open the file.
+    /// @param  path  - path to file.
+    /// @param  m - open file mode.
+    /// @throw  std::runtime_error if can not open file.
+    void open(const std::string& path, const mode m)
+    {
+        file_path = path;
+        open_flags = O_CLOEXEC | O_LARGEFILE;
+        open_flags = open_flags | (m == mode::R_ONLY) ? O_RDONLY : O_RDWR;
+
+        opts.fd = ::open(file_path.data(), open_flags);
+        if (opts.fd == -1) {
+            throw std::runtime_error("open: error open file: " + str_error_r(errno));
+        }
+
+        if (m == mode::R_ONLY) {
+            opts.prot = PROT_READ;
+            opts.flags = MAP_SHARED | MAP_FILE;
+        } else if (m == mode::RW_PRIVATE) {
+            opts.prot = PROT_READ | PROT_WRITE;
+            opts.flags = MAP_PRIVATE | MAP_FILE;
+        } else { // if (m == mode::RW_SHARED) {
+            opts.prot = PROT_READ | PROT_WRITE;
+            opts.flags = MAP_SHARED | MAP_FILE;
+        }
+    }
+
+    mmap_options opts;
+
+    std::string file_path;
+    int open_flags;
+
+    pointer p_cur_buf;
+    size_t cur_buf_num;
+};
+
+} // namespace utils
 } // namespace details
 } // namespace mfcnt
 
