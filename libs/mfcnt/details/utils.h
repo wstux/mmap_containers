@@ -78,10 +78,22 @@ struct mmap_buffer
         , cur_buf_num(0)
     {}
 
+    /// @brief  Unmap buffer and close the file.
+    void close()
+    {
+        if (opts.fd == -1) {
+            return;
+        }
+        unmap();
+        ::close(opts.fd);
+        opts.fd = -1;
+        
+    }
+
     /// @brief  Mapping file to buffer.
     /// @param  buf_num - the number of the "segment" of the file to be mapping in memory.
     /// @return Pointer to mapping in memory.
-    pointer mmap(const size_t buf_num) const
+    pointer map(const size_t buf_num) const
     {
         assert(opts.fd != -1);
 
@@ -92,7 +104,7 @@ struct mmap_buffer
         p_cur_buf = (pointer)::mmap64(p_cur_buf, TBufSize, opts.prot, opts.flags,
                                       opts.fd, opts.offset + buf_num * TBufSize);
         if (p_addr == MAP_FAILED) {
-            throw std::runtime_error("mmap: error map file to memory: " + str_error_r(errno));
+            throw std::runtime_error("map: error map file to memory: " + str_error_r(errno));
         }
         cur_buf_num = buf_num;
         return p_cur_buf;
@@ -125,7 +137,7 @@ struct mmap_buffer
         }
     }
 
-    void munmap() const
+    void unmap() const
     {
         if (p_cur_buf != nullptr) {
             ::munmap(p_cur_buf, TBufSize);
