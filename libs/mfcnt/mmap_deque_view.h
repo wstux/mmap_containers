@@ -61,11 +61,11 @@ public:
     {}
 
     mmap_deque_view(const char* file_path, off64_t offset = 0, mode m = mode::R_ONLY)
-        : base(std::string(file_path), offset, mode::R_ONLY)
+        : base(std::string(file_path), offset, m)
     {}
 
     mmap_deque_view(const std::string& file_path, off64_t offset = 0, mode m = mode::R_ONLY)
-        : base(file_path, offset, mode::R_ONLY)
+        : base(file_path, offset, m)
     {}
 
 //    mmap_deque_view(const mmap_deque_view& orig)
@@ -78,9 +78,21 @@ public:
 
     virtual ~mmap_deque_view() {}
 
+    const_reference at(size_type pos) const
+    {
+        base::check_range(pos);
+        return (*this)[pos];
+    }
+
     bool empty() const { return (size() == 0); }
 
     size_type size() const { return base::m_size; }
+
+    const_reference operator[](size_type pos) const
+    {
+        assert(pos < size());
+        return base::get_value(pos);
+    }
 };
 
 } // namespace mfcnt

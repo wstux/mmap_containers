@@ -111,6 +111,32 @@ protected:
         m_size = 0;
     }
 
+    /// @brief  Сheck for exceeding the permissible range.
+    /// @throw  std::runtime_error if the value exceeds the permissible limits.
+    inline void check_range(size_t pos) const
+    {
+        assert(m_buffer.is_open() && "check_range: file is not open");
+        assert(pos < m_size && "position is out of range");
+
+        if (pos >= m_size) {
+            throw std::runtime_error("mmap_base_container::check_range: pos (which is "
+                                     + std::to_string(pos) + ") >= this->size() (which is "
+                                     + std::to_string(m_size) + ")");
+        }
+    }
+
+    /// @brief  Get value by position.
+    /// @param  pos - position.
+    /// @return Element reference.
+    inline reference get_value(size_t pos) const
+    {
+        assert(m_buffer.is_open() && "get_value: file is not open");
+
+        pos += m_begin_delta;
+        pointer p_page = m_buffer.map(pos / TBufSize);
+        return *(p_page + (pos % TBufSize));
+    }
+
 protected:
     utils::mmap_buffer<pointer, TBufSize> m_buffer;
 
