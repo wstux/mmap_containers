@@ -43,10 +43,32 @@ protected:
 
     /// @brief  Constructor.
     mmap_base_container()
-        : m_begin_delta(0)
+        : m_size(0)
+        , m_begin_delta(0)
         , m_mmap_size(0)
-        , m_size(0)
     {}
+
+    /// @brief  Constructor.
+    /// @param  file_path  - path to file.
+    /// @param  fd         - file descriptor.
+    /// @param  offset     - offset to start mapping the file.
+    /// @param  open_flags - flags with which you need to open the file.
+    /// @param  mmap_prot  - desired memory protection of the mapping.
+    /// @param  mmap_flags - determines whether updates to the mapping are visible to other
+    ///                      processes mapping the same region, and whether updates are carried
+    ///                      through to the underlying file.
+    mmap_base_container(const std::string& file_path, off64_t offset, mode m)
+        : m_buffer(file_path, m)
+        , m_size(m_buffer.file_size())
+        , m_begin_delta(offset % utils::memory_page_size())
+        , m_mmap_size(m_size + m_begin_delta)
+    {
+        assert(m_buffer.is_open());
+        assert(! (TBufSize % utils::memory_page_size()));
+        assert(! (m_size % sizeof(value_type)));
+
+        m_buffer.opts.offset = offset - m_begin_delta;
+    }
 
     /// @brief  Constructor.
     /// @param  file_path  - path to file.
@@ -60,19 +82,13 @@ protected:
     ///                      through to the underlying file.
     mmap_base_container(const std::string& file_path, size_t size, off64_t offset, mode m)
         : m_buffer(file_path, m)
-        , m_begin_delta(0)
-        , m_mmap_size(0)
-        , m_size(0)
+        , m_size(size)
+        , m_begin_delta(offset % utils::memory_page_size())
+        , m_mmap_size(m_size + m_begin_delta)
     {
-        assert(m_impl.buf_mapper.opts.fd != -1);
-
-        const long page_size = utils::memory_page_size();
-        assert(! (TBufSize % page_size));
-        assert(! (size % sizeof(value_type)));
-
-        m_begin_delta = offset % page_size;
-        m_mmap_size = size + m_begin_delta;
-        m_size = size;
+        assert(m_buffer.is_open());
+        assert(! (TBufSize % utils::memory_page_size()));
+        assert(! (m_size % sizeof(value_type)));
 
         m_buffer.opts.offset = offset - m_begin_delta;
     }
@@ -95,12 +111,12 @@ protected:
         m_size = 0;
     }
 
-private:
-    mmap_buffer<pointer, TBufSize> m_buffer;
+protected:
+    utils::mmap_buffer<pointer, TBufSize> m_buffer;
 
+    size_t m_size;
     size_t m_begin_delta;
     size_t m_mmap_size;
-    size_t m_size;
 };
 
 } // namespace details

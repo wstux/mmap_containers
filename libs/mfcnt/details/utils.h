@@ -72,13 +72,13 @@ struct mmap_buffer
 {
     typedef TPtr    pointer;
 
-    BufMapper()
+    mmap_buffer()
         : open_flags(-1)
         , p_cur_buf(nullptr)
         , cur_buf_num(0)
     {}
 
-    BufMapper(const std::string& path, const mode m)
+    mmap_buffer(const std::string& path, const mode m)
         : open_flags(-1)
         , p_cur_buf(nullptr)
         , cur_buf_num(0)
@@ -98,6 +98,22 @@ struct mmap_buffer
         
     }
 
+    /// @brief  File size calculation.
+    /// @return File size.
+    /// @throw  std::runtime_error if can not get file stat. Before throwing an
+    ///         exception, the file will be closed.
+    size_t file_size()
+    {
+        assert(is_open());
+
+        struct ::stat st;
+        if (::fstat(opts.fd, &st) == -1) {
+            throw std::runtime_error("file_size: error file status: " + str_error_r(errno));
+        }
+
+        return st.st_size;
+    }
+
     bool is_open() const { return (opts.fd != -1); }
 
     /// @brief  Mapping file to buffer.
@@ -113,7 +129,7 @@ struct mmap_buffer
 
         p_cur_buf = (pointer)::mmap64(p_cur_buf, TBufSize, opts.prot, opts.flags,
                                       opts.fd, opts.offset + buf_num * TBufSize);
-        if (p_addr == MAP_FAILED) {
+        if (p_cur_buf == MAP_FAILED) {
             throw std::runtime_error("map: error map file to memory: " + str_error_r(errno));
         }
         cur_buf_num = buf_num;
@@ -172,7 +188,7 @@ struct mmap_buffer
     #endif
 
         if (! str_err) {
-            return std::string("Invalid errno code '" + std::to_string(error_code) + "'");
+            return std::string("invalid errno code '" + std::to_string(error_code) + "'");
         }
 
         return std::string(str_err) + " (" + std::to_string(error_code) + ")";
