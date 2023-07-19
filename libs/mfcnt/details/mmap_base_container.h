@@ -106,12 +106,18 @@ protected:
     }
 
     /// @brief  Move constructor.
-    mmap_base_container(mmap_base_container&& orig) = delete;
+    mmap_base_container(mmap_base_container&& orig)
+        : m_buffer(std::move(orig.m_buffer))
+        , m_size(orig.m_size)
+        , m_begin_delta(orig.m_begin_delta)
+        , m_mmap_size(orig.m_mmap_size)
+    {
+        orig.m_size = 0;
+    }
 
     /// @brief  Destructor.
     virtual ~mmap_base_container()
     {
-        
         if (! m_buffer.is_open()) {
             return;
         }
@@ -148,7 +154,9 @@ protected:
 
     void swap(mmap_base_container& orig)
     {
-        //std::swap(m_buffer, orig.m_buffer);
+        if (this == &orig) {
+            return;
+        }
         m_buffer.swap(orig.m_buffer);
         std::swap(m_size, orig.m_size);
         std::swap(m_begin_delta, orig.m_begin_delta);
@@ -157,7 +165,6 @@ protected:
 
 protected:
     utils::mmap_buffer<pointer, TBufSize> m_buffer;
-
     size_t m_size;
     size_t m_begin_delta;
     size_t m_mmap_size;

@@ -72,9 +72,9 @@ public:
         : base(orig)
     {}
 
-//    mmap_deque_view(mmap_deque_view&& orig)
-//        : Base(std::move(orig))
-//    {}
+    mmap_deque_view(mmap_deque_view&& orig)
+        : base(std::move(orig))
+    {}
 
     virtual ~mmap_deque_view() {}
 
@@ -94,6 +94,14 @@ public:
     {
         if (this != &orig) {
             mmap_deque_view(orig).swap(*this);
+        }
+        return *this;
+    }
+
+    mmap_deque_view& operator=(mmap_deque_view&& orig)
+    {
+        if (this != &orig) {
+            mmap_deque_view(std::move(orig)).swap(*this);
         }
         return *this;
     }

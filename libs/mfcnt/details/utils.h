@@ -95,6 +95,17 @@ struct mmap_buffer
         map(orig.cur_buf_num);
     }
 
+    mmap_buffer(mmap_buffer&& orig)
+        : opts(std::move(orig.opts))
+        , file_path(std::move(orig.file_path))
+        , open_flags(std::move(orig.open_flags))
+        , p_cur_buf(std::move(orig.p_cur_buf))
+        , cur_buf_num(std::move(orig.cur_buf_num))
+    {
+        orig.opts.fd = -1;
+        orig.p_cur_buf = nullptr;
+    }
+
     /// @brief  Unmap buffer and close the file.
     void close()
     {
