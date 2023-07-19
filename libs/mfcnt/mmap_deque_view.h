@@ -68,9 +68,9 @@ public:
         : base(file_path, offset, m)
     {}
 
-//    mmap_deque_view(const mmap_deque_view& orig)
-//        : base(orig)
-//    {}
+    mmap_deque_view(const mmap_deque_view& orig)
+        : base(orig)
+    {}
 
 //    mmap_deque_view(mmap_deque_view&& orig)
 //        : Base(std::move(orig))
@@ -87,6 +87,16 @@ public:
     bool empty() const { return (size() == 0); }
 
     size_type size() const { return base::m_size; }
+
+    void swap(mmap_deque_view& orig) { base::swap(orig); }
+
+    mmap_deque_view& operator=(const mmap_deque_view& orig)
+    {
+        if (this != &orig) {
+            mmap_deque_view(orig).swap(*this);
+        }
+        return *this;
+    }
 
     const_reference operator[](size_type pos) const
     {

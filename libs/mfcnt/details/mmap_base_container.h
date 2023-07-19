@@ -94,7 +94,16 @@ protected:
     }
 
     /// @brief  Copy constructor.
-    mmap_base_container(const mmap_base_container& orig) = delete;
+    mmap_base_container(const mmap_base_container& orig)
+        : m_buffer(orig.m_buffer)
+        , m_size(orig.m_size)
+        , m_begin_delta(orig.m_begin_delta)
+        , m_mmap_size(orig.m_mmap_size)
+    {
+        assert(m_buffer.is_open());
+        assert(! (TBufSize % utils::memory_page_size()));
+        assert(! (m_size % sizeof(value_type)));
+    }
 
     /// @brief  Move constructor.
     mmap_base_container(mmap_base_container&& orig) = delete;
@@ -135,6 +144,15 @@ protected:
         pos += m_begin_delta;
         pointer p_page = m_buffer.map(pos / TBufSize);
         return *(p_page + (pos % TBufSize));
+    }
+
+    void swap(mmap_base_container& orig)
+    {
+        //std::swap(m_buffer, orig.m_buffer);
+        m_buffer.swap(orig.m_buffer);
+        std::swap(m_size, orig.m_size);
+        std::swap(m_begin_delta, orig.m_begin_delta);
+        std::swap(m_mmap_size, orig.m_mmap_size);
     }
 
 protected:

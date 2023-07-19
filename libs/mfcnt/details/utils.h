@@ -86,6 +86,15 @@ struct mmap_buffer
         open(path, m);
     }
 
+    mmap_buffer(const mmap_buffer& orig)
+        : open_flags(-1)
+        , p_cur_buf(nullptr)
+    {
+        opts.offset = orig.opts.offset;
+        open(orig.file_path, orig.open_flags, orig.opts.prot, orig.opts.flags);
+        map(orig.cur_buf_num);
+    }
+
     /// @brief  Unmap buffer and close the file.
     void close()
     {
@@ -95,7 +104,6 @@ struct mmap_buffer
         unmap();
         ::close(opts.fd);
         opts.fd = -1;
-        
     }
 
     /// @brief  File size calculation.
@@ -142,25 +150,52 @@ struct mmap_buffer
     /// @throw  std::runtime_error if can not open file.
     void open(const std::string& path, const mode m)
     {
+        int open_fls = O_CLOEXEC | O_LARGEFILE;
+        open_fls = open_flags | (m == mode::R_ONLY) ? O_RDONLY : O_RDWR;
+
+        int prot_fls;
+        int mmap_fls;
+        if (m == mode::R_ONLY) {
+            prot_fls = PROT_READ;
+            mmap_fls = MAP_SHARED | MAP_FILE;
+        } else if (m == mode::RW_PRIVATE) {
+            prot_fls = PROT_READ | PROT_WRITE;
+            mmap_fls = MAP_PRIVATE | MAP_FILE;
+        } else { // if (m == mode::RW_SHARED) {
+            prot_fls = PROT_READ | PROT_WRITE;
+            mmap_fls = MAP_SHARED | MAP_FILE;
+        }
+
+        open(path, open_fls, prot_fls, mmap_fls);
+    }
+
+    /// @brief  Open the file.
+    /// @param  path  - path to file.
+    /// @param  m - open file mode.
+    /// @throw  std::runtime_error if can not open file.
+    void open(const std::string& path, int open_fls, int prot_fls, int mmap_fls)
+    {
         file_path = path;
-        open_flags = O_CLOEXEC | O_LARGEFILE;
-        open_flags = open_flags | (m == mode::R_ONLY) ? O_RDONLY : O_RDWR;
+        open_flags = open_fls;
+
+        opts.prot = prot_fls;
+        opts.flags = mmap_fls;
 
         opts.fd = ::open(file_path.data(), open_flags);
         if (opts.fd == -1) {
             throw std::runtime_error("open: error open file: " + str_error_r(errno));
         }
+    }
 
-        if (m == mode::R_ONLY) {
-            opts.prot = PROT_READ;
-            opts.flags = MAP_SHARED | MAP_FILE;
-        } else if (m == mode::RW_PRIVATE) {
-            opts.prot = PROT_READ | PROT_WRITE;
-            opts.flags = MAP_PRIVATE | MAP_FILE;
-        } else { // if (m == mode::RW_SHARED) {
-            opts.prot = PROT_READ | PROT_WRITE;
-            opts.flags = MAP_SHARED | MAP_FILE;
-        }
+    void swap(mmap_buffer& orig)
+    {
+        std::swap(opts, orig.opts);
+
+        std::swap(file_path, orig.file_path);
+        std::swap(open_flags, orig.open_flags);
+
+        std::swap(p_cur_buf, orig.p_cur_buf);
+        std::swap(cur_buf_num, orig.cur_buf_num);
     }
 
     void unmap() const
