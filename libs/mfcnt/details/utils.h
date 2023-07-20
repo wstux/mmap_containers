@@ -251,9 +251,38 @@ struct mmap_buffer
 
 /// @brief  Memory page size calculation.
 /// @return Memory page size.
-long memory_page_size()
+inline long memory_page_size()
 {
     return ::sysconf(_SC_PAGE_SIZE);
+}
+
+inline void* mmap_buf(void* p_addr, const size_t length, const int prot, const int flags, const int fd, const off_t offset)
+{
+    assert(fd != -1);
+    assert(length);
+
+    p_addr = ::mmap64(p_addr, length, prot, flags, fd, offset);
+    if (p_addr == MAP_FAILED) {
+        throw std::runtime_error("mmap_buf: error map file to memory: " + std::to_string(errno));
+    }
+
+    return p_addr;
+}
+
+inline void* mmap_buf(void* p_addr, const size_t length, const mmap_options& opts, const off_t offset)
+{
+    return mmap_buf(p_addr, length, opts.prot, opts.flags, opts.fd, opts.offset + offset);
+}
+
+inline int munmap_buf(void* p_addr, const size_t length)
+{
+    assert(length);
+
+    if (! p_addr) {
+        return 0;
+    }
+
+    return ::munmap(p_addr, length);
 }
 
 } // namespace utils
