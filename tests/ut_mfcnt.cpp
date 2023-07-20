@@ -4,6 +4,7 @@
 #include <testing/utils.h>
 
 #include "mfcnt/mmap_deque_view.h"
+#include "mfcnt/mmap_list_view.h"
 
 #include "utils.h"
 
@@ -98,7 +99,8 @@ private:
 //    size_t m_base_mem = 0;
 };
 
-using cnt_types = testing::Types<mfcnt::mmap_deque_view<char, 4096>>;
+using cnt_types = testing::Types<mfcnt::mmap_deque_view<char, 4096>,
+                                 mfcnt::mmap_list_view<char, 4096>>;
 TYPED_TEST_SUITE(mfcnt_fixture, cnt_types);
 
 } // <anonumous> namespace

@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2019 Chistyakov Alexander.
+ * Copyright 2023 Chistyakov Alexander.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -334,37 +334,37 @@ inline bool operator>(const mmap_deque_iterator<const TTp, TBufSize>& lhl, const
 template<typename TTp, size_t TBufSize>
 inline bool operator<=(const mmap_deque_iterator<TTp, TBufSize>& lhl, const mmap_deque_iterator<TTp, TBufSize>& rhl)
 {
-    return !(rhl < lhl);
+    return ! (rhl < lhl);
 }
 
 template<typename TTp, size_t TBufSize>
 inline bool operator<=(const mmap_deque_iterator<TTp, TBufSize>& lhl, const mmap_deque_iterator<const TTp, TBufSize>& rhl)
 {
-    return !(rhl < lhl);
+    return ! (rhl < lhl);
 }
 
 template<typename TTp, size_t TBufSize>
 inline bool operator<=(const mmap_deque_iterator<const TTp, TBufSize>& lhl, const mmap_deque_iterator<TTp, TBufSize>& rhl)
 {
-    return !(rhl < lhl);
+    return ! (rhl < lhl);
 }
 
 template<typename TTp, size_t TBufSize>
 inline bool operator>=(const mmap_deque_iterator<TTp, TBufSize>& lhl, const mmap_deque_iterator<TTp, TBufSize>& rhl)
 {
-    return !(lhl < rhl);
+    return ! (lhl < rhl);
 }
 
 template<typename TTp, size_t TBufSize>
 inline bool operator>=(const mmap_deque_iterator<TTp, TBufSize>& lhl, const mmap_deque_iterator<const TTp, TBufSize>& rhl)
 {
-    return !(lhl < rhl);
+    return ! (lhl < rhl);
 }
 
 template<typename TTp, size_t TBufSize>
 inline bool operator>=(const mmap_deque_iterator<const TTp, TBufSize>& lhl, const mmap_deque_iterator<TTp, TBufSize>& rhl)
 {
-    return !(lhl < rhl);
+    return ! (lhl < rhl);
 }
 
 template<typename TTp, size_t TBufSize>
