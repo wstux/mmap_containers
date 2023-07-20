@@ -49,6 +49,9 @@ struct mmap_options
 {
     mmap_options()
         : fd(-1)
+        , offset(0)
+        , prot(-1)
+        , flags(-1)
     {}
 
     /// File descriptor.
