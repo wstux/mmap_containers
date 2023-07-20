@@ -31,15 +31,17 @@
 namespace mfcnt {
 namespace details {
 
-template<typename TType, size_t TBufSize>
+template<typename TType, size_t TBufSize, template<typename TTp, size_t TBs> class TIterator>
 class mmap_base_container
 {
 protected:
-    typedef TType                   value_type;
-    typedef value_type*             pointer;
-    typedef const value_type*       const_pointer;
-    typedef value_type&             reference;
-    typedef const value_type&       const_reference;
+    typedef TType                                   value_type;
+    typedef value_type*                             pointer;
+    typedef const value_type*                       const_pointer;
+    typedef value_type&                             reference;
+    typedef const value_type&                       const_reference;
+    typedef TIterator<value_type, TBufSize>         iterator;
+    typedef TIterator<const value_type, TBufSize>   const_iterator;
 
     /// @brief  Constructor.
     mmap_base_container()

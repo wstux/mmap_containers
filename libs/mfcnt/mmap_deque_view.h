@@ -27,13 +27,14 @@
 
 #include "mfcnt/types.h"
 #include "mfcnt/details/mmap_base_container.h"
+#include "mfcnt/details/mmap_deque_iterator.h"
 
 namespace mfcnt {
 
 template<typename TTp, size_t TCount = 4*1024*1024>
-class mmap_deque_view : protected details::mmap_base_container<TTp, sizeof(TTp)*TCount>
+class mmap_deque_view : protected details::mmap_base_container<TTp, sizeof(TTp)*TCount, details::mmap_deque_iterator>
 {
-    typedef details::mmap_base_container<TTp, sizeof(TTp)*TCount>   base;
+    typedef details::mmap_base_container<TTp, sizeof(TTp)*TCount, details::mmap_deque_iterator> base;
 
 public:
     typedef TTp                                     value_type;
@@ -41,10 +42,10 @@ public:
     typedef typename base::const_pointer            const_pointer;
     typedef typename base::const_reference          reference;
     typedef typename base::const_reference          const_reference;
-//    typedef typename base::const_iterator           iterator;
-//    typedef typename base::const_iterator           const_iterator;
-//    typedef std::reverse_iterator<const_iterator>   reverse_iterator;
-//    typedef std::reverse_iterator<const_iterator>   const_reverse_iterator;
+    typedef typename base::iterator                 iterator;
+    typedef typename base::const_iterator           const_iterator;
+    typedef std::reverse_iterator<iterator>         reverse_iterator;
+    typedef std::reverse_iterator<const_iterator>   const_reverse_iterator;
     typedef size_t                                  size_type;
     typedef ptrdiff_t                               difference_type;
 
@@ -84,7 +85,21 @@ public:
         return (*this)[pos];
     }
 
+    const_reference back() const { return (*this)[size() - 1]; }
+
+    iterator begin() { return iterator(base::m_buffer, 0, 0); }
+
+    const_iterator begin() const { return const_iterator(base::m_buffer, 0, 0); }
+
+    const_iterator cbegin() const { return const_iterator(base::m_buffer, 0, 0); }
+
+    const_iterator cend() const { return const_iterator(base::m_buffer, base::m_size / (sizeof(TTp)*TCount), base::m_size); }
+
     bool empty() const { return (size() == 0); }
+
+    iterator end() { return iterator(base::m_buffer, base::m_size / (sizeof(TTp)*TCount), base::m_size); }
+
+    const_iterator end() const { return const_iterator(base::m_buffer, base::m_size / (sizeof(TTp)*TCount), base::m_size); }
 
     size_type size() const { return base::m_size; }
 
