@@ -72,30 +72,75 @@ struct mmap_buffer
 {
     typedef TPtr    pointer;
 
-    BufMapper()
+    mmap_buffer()
         : open_flags(-1)
-        , p_cur_buf(NULL)
+        , p_cur_buf(nullptr)
         , cur_buf_num(0)
     {}
+
+    mmap_buffer(const std::string& path, const mode m)
+        : open_flags(-1)
+        , p_cur_buf(nullptr)
+        , cur_buf_num(0)
+    {
+        open(path, m);
+    }
+
+    mmap_buffer(const mmap_buffer& orig)
+        : open_flags(-1)
+        , p_cur_buf(nullptr)
+    {
+        opts.offset = orig.opts.offset;
+        open(orig.file_path, orig.open_flags, orig.opts.prot, orig.opts.flags);
+        map(orig.cur_buf_num);
+    }
+
+    mmap_buffer(mmap_buffer&& orig)
+        : opts(std::move(orig.opts))
+        , file_path(std::move(orig.file_path))
+        , open_flags(std::move(orig.open_flags))
+        , p_cur_buf(std::move(orig.p_cur_buf))
+        , cur_buf_num(std::move(orig.cur_buf_num))
+    {
+        orig.opts.fd = -1;
+        orig.p_cur_buf = nullptr;
+    }
 
     /// @brief  Unmap buffer and close the file.
     void close()
     {
-        if (opts.fd == -1) {
+        if (! is_open()) {
             return;
         }
         unmap();
         ::close(opts.fd);
         opts.fd = -1;
-        
     }
+
+    /// @brief  File size calculation.
+    /// @return File size.
+    /// @throw  std::runtime_error if can not get file stat. Before throwing an
+    ///         exception, the file will be closed.
+    size_t file_size()
+    {
+        assert(is_open());
+
+        struct ::stat st;
+        if (::fstat(opts.fd, &st) == -1) {
+            throw std::runtime_error("file_size: error file status: " + str_error_r(errno));
+        }
+
+        return st.st_size;
+    }
+
+    bool is_open() const { return (opts.fd != -1); }
 
     /// @brief  Mapping file to buffer.
     /// @param  buf_num - the number of the "segment" of the file to be mapping in memory.
     /// @return Pointer to mapping in memory.
     pointer map(const size_t buf_num) const
     {
-        assert(opts.fd != -1);
+        assert(is_open());
 
         if (buf_num == cur_buf_num && p_cur_buf) {
             return p_cur_buf;
@@ -103,7 +148,7 @@ struct mmap_buffer
 
         p_cur_buf = (pointer)::mmap64(p_cur_buf, TBufSize, opts.prot, opts.flags,
                                       opts.fd, opts.offset + buf_num * TBufSize);
-        if (p_addr == MAP_FAILED) {
+        if (p_cur_buf == MAP_FAILED) {
             throw std::runtime_error("map: error map file to memory: " + str_error_r(errno));
         }
         cur_buf_num = buf_num;
@@ -116,25 +161,52 @@ struct mmap_buffer
     /// @throw  std::runtime_error if can not open file.
     void open(const std::string& path, const mode m)
     {
+        int open_fls = O_CLOEXEC | O_LARGEFILE;
+        open_fls = open_flags | (m == mode::R_ONLY) ? O_RDONLY : O_RDWR;
+
+        int prot_fls;
+        int mmap_fls;
+        if (m == mode::R_ONLY) {
+            prot_fls = PROT_READ;
+            mmap_fls = MAP_SHARED | MAP_FILE;
+        } else if (m == mode::RW_PRIVATE) {
+            prot_fls = PROT_READ | PROT_WRITE;
+            mmap_fls = MAP_PRIVATE | MAP_FILE;
+        } else { // if (m == mode::RW_SHARED) {
+            prot_fls = PROT_READ | PROT_WRITE;
+            mmap_fls = MAP_SHARED | MAP_FILE;
+        }
+
+        open(path, open_fls, prot_fls, mmap_fls);
+    }
+
+    /// @brief  Open the file.
+    /// @param  path  - path to file.
+    /// @param  m - open file mode.
+    /// @throw  std::runtime_error if can not open file.
+    void open(const std::string& path, int open_fls, int prot_fls, int mmap_fls)
+    {
         file_path = path;
-        open_flags = O_CLOEXEC | O_LARGEFILE;
-        open_flags = open_flags | (m == mode::R_ONLY) ? O_RDONLY : O_RDWR;
+        open_flags = open_fls;
+
+        opts.prot = prot_fls;
+        opts.flags = mmap_fls;
 
         opts.fd = ::open(file_path.data(), open_flags);
         if (opts.fd == -1) {
             throw std::runtime_error("open: error open file: " + str_error_r(errno));
         }
+    }
 
-        if (m == mode::R_ONLY) {
-            opts.prot = PROT_READ;
-            opts.flags = MAP_SHARED | MAP_FILE;
-        } else if (m == mode::RW_PRIVATE) {
-            opts.prot = PROT_READ | PROT_WRITE;
-            opts.flags = MAP_PRIVATE | MAP_FILE;
-        } else { // if (m == mode::RW_SHARED) {
-            opts.prot = PROT_READ | PROT_WRITE;
-            opts.flags = MAP_SHARED | MAP_FILE;
-        }
+    void swap(mmap_buffer& orig)
+    {
+        std::swap(opts, orig.opts);
+
+        std::swap(file_path, orig.file_path);
+        std::swap(open_flags, orig.open_flags);
+
+        std::swap(p_cur_buf, orig.p_cur_buf);
+        std::swap(cur_buf_num, orig.cur_buf_num);
     }
 
     void unmap() const
@@ -162,7 +234,7 @@ struct mmap_buffer
     #endif
 
         if (! str_err) {
-            return std::string("Invalid errno code '" + std::to_string(error_code) + "'");
+            return std::string("invalid errno code '" + std::to_string(error_code) + "'");
         }
 
         return std::string(str_err) + " (" + std::to_string(error_code) + ")";
@@ -176,6 +248,42 @@ struct mmap_buffer
     mutable pointer p_cur_buf;
     mutable size_t cur_buf_num;
 };
+
+/// @brief  Memory page size calculation.
+/// @return Memory page size.
+inline long memory_page_size()
+{
+    return ::sysconf(_SC_PAGE_SIZE);
+}
+
+inline void* mmap_buf(void* p_addr, const size_t length, const int prot, const int flags, const int fd, const off_t offset)
+{
+    assert(fd != -1);
+    assert(length);
+
+    p_addr = ::mmap64(p_addr, length, prot, flags, fd, offset);
+    if (p_addr == MAP_FAILED) {
+        throw std::runtime_error("mmap_buf: error map file to memory: " + std::to_string(errno));
+    }
+
+    return p_addr;
+}
+
+inline void* mmap_buf(void* p_addr, const size_t length, const mmap_options& opts, const off_t offset)
+{
+    return mmap_buf(p_addr, length, opts.prot, opts.flags, opts.fd, opts.offset + offset);
+}
+
+inline int munmap_buf(void* p_addr, const size_t length)
+{
+    assert(length);
+
+    if (! p_addr) {
+        return 0;
+    }
+
+    return ::munmap(p_addr, length);
+}
 
 } // namespace utils
 } // namespace details
