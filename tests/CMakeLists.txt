@@ -9,3 +9,14 @@ TestTarget(ut_mfcnt
         testing
 )
 
+# Performance tests
+
+TestTarget(perf_mfcnt
+    SOURCES
+        perf_mfcnt.cpp
+    LIBRARIES
+        mfcnt
+    DEPENDS
+        testing
+)
+
